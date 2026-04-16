@@ -618,6 +618,9 @@ body::after {
     AudioShelf
   </div>
   <div class="header-actions">
+    <button class="btn btn-ghost" onclick="exportData()" title="匯出所有書本資料">⬇ 匯出</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('importInput').click()" title="匯入備份檔案">⬆ 匯入</button>
+    <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)" />
     <button class="btn btn-gold" onclick="openAddModal()">＋ 新增書本</button>
   </div>
 </header>
@@ -1443,6 +1446,55 @@ function showToast(msg, isGold = false) {
 document.getElementById('addModal').addEventListener('click', e => {
   if (e.target === document.getElementById('addModal')) closeAddModal();
 });
+
+// ── 匯出資料 ──
+function exportData() {
+  if (books.length === 0) { showToast('書架是空的，沒有資料可以匯出', false); return; }
+  const exportObj = { version: '1.0', exportedAt: new Date().toISOString(), bookCount: books.length, books };
+  const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `audioshelf-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✅ 已匯出 ${books.length} 本書`, true);
+}
+
+// ── 匯入資料 ──
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const importedBooks = Array.isArray(data) ? data : (data.books || []);
+      if (!importedBooks.length) { showToast('❌ 沒有找到書本資料', false); return; }
+      if (books.length > 0) {
+        const merge = confirm(`目前書架有 ${books.length} 本書。\n\n確定 → 合併（保留現有＋加入匯入）\n取消 → 覆蓋（只保留匯入的資料）`);
+        if (merge) {
+          const existingIds = new Set(books.map(b => b.id));
+          const newBooks = importedBooks.filter(b => !existingIds.has(b.id));
+          books = [...books, ...newBooks];
+          showToast(`✅ 合併完成！新增了 ${newBooks.length} 本書`, true);
+        } else {
+          books = importedBooks;
+          showToast(`✅ 匯入成功！共 ${books.length} 本書`, true);
+        }
+      } else {
+        books = importedBooks;
+        showToast(`✅ 匯入成功！共 ${books.length} 本書`, true);
+      }
+      saveBooks();
+      renderShelf();
+    } catch(err) {
+      showToast('❌ 檔案格式錯誤', false);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
 </script>
 </body>
 </html>
