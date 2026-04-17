@@ -103,6 +103,7 @@ function buildEmailHTML(topStories, summaryStories) {
 
   function summaryCard(n, regionLabel, regionColor, regionBg) {
     const srcLink = n.sourceUrl ? `<a href="${n.sourceUrl}" style="color:#4a9eff;font-size:11px;font-family:monospace;text-decoration:none;">${n.source} ↗</a>` : `<span style="font-size:11px;color:#888;">${n.source}</span>`;
+    const appUrl = `https://appcommons27.github.io/AppCommons/automotive-intelligence.html?analyze=1&url=${encodeURIComponent(n.sourceUrl||'')}&title=${encodeURIComponent(n.titleEn)}&summary=${encodeURIComponent(n.summaryEn)}&source=${encodeURIComponent(n.source)}`;
     return `
 <div style="background:#151820;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:16px;margin-bottom:10px;">
   <div style="display:flex;gap:8px;margin-bottom:8px;">
@@ -110,7 +111,7 @@ function buildEmailHTML(topStories, summaryStories) {
   </div>
   <h4 style="font-size:14px;font-weight:500;color:#e8eaf0;margin:0 0 6px;line-height:1.5;">${n.titleEn}</h4>
   <p style="font-size:12px;color:#8a8fa8;margin:0 0 10px;line-height:1.6;">${n.summaryEn}</p>
-  <div style="display:flex;align-items:center;justify-content:space-between;">${srcLink}<a href="https://appcommons27.github.io/AppCommons/automotive-intelligence.html" style="font-size:11px;color:#555b72;text-decoration:none;font-family:monospace;">Deep analysis ↗</a></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;">${srcLink}<a href="${appUrl}" style="font-size:11px;color:#1fce8a;text-decoration:none;font-family:monospace;">Deep analysis in app ↗</a></div>
 </div>`;
   }
 

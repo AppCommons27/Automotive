@@ -669,6 +669,98 @@ window.toggleLang = () => {
 
 // Apply on load
 applyLang();
+
+// ── URL PARAM: auto deep analysis from email link ──
+// Usage: ?analyze=1&url=https://...&title=Article+Title&summary=Summary&source=Reuters
+async function handleUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.get('analyze')) return;
+
+  const articleUrl = params.get('url') || '';
+  const articleTitle = decodeURIComponent(params.get('title') || '');
+  const articleSummary = decodeURIComponent(params.get('summary') || '');
+  const articleSource = decodeURIComponent(params.get('source') || 'News');
+
+  if (!articleTitle) return;
+
+  // Wait for auth state to settle
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  if (!window._apiKey) return; // Need API key
+
+  // Show main app if not already shown
+  document.getElementById('api-setup').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+  document.getElementById('btn-refresh').style.display = 'block';
+  document.getElementById('btn-export-html').style.display = 'block';
+  document.getElementById('btn-export-pdf').style.display = 'block';
+
+  // Switch to today tab
+  switchTab('today');
+
+  // Show analyzing UI
+  document.getElementById('content').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--accent2);border-radius:12px;padding:1.5rem;margin-bottom:1rem;">
+      <div style="font-size:11px;color:var(--accent);font-family:var(--mono);margin-bottom:8px;">★ From Email · Deep Analysis</div>
+      <h3 style="font-size:15px;font-weight:500;color:var(--text);margin:0 0 6px;line-height:1.5;">${articleTitle}</h3>
+      <p style="font-size:13px;color:var(--text2);margin:0 0 16px;">${articleSummary}</p>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="spinner" style="width:20px;height:20px;flex-shrink:0;"></div>
+        <span style="font-size:13px;color:var(--text3);font-family:var(--mono);">Claude is analyzing this article...</span>
+      </div>
+    </div>`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': window._apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 2000,
+        system: `You are a senior automotive industry analyst focused on Smart Cockpit. Analyze this news and return JSON only: {"backgroundEn":"60-80w","backgroundZh":"60-80字","keyPointsEn":["p1","p2","p3"],"keyPointsZh":["重點一","重點二","重點三"],"impactEn":"50-70w","impactZh":"50-70字","cockpitEn":"40-60w","cockpitZh":"40-60字","tags":["high"]} tags from high/mid/watch. JSON only.`,
+        messages: [{ role: 'user', content: `Analyze: Title: ${articleTitle}\nSummary: ${articleSummary}\nSource: ${articleSource}\nURL: ${articleUrl}` }]
+      })
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    const data = await res.json();
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const report = JSON.parse(clean.substring(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
+
+    const tagLabel = { high: 'High Impact', mid: 'Mid Impact', watch: 'Watch' };
+    const ptsEn = (report.keyPointsEn || []).map(p => `<li>${p}</li>`).join('');
+    const ptsZh = (report.keyPointsZh || []).map(p => `<li>${p}</li>`).join('');
+    const tags = (report.tags || []).map(t => `<span class="tag-${t}">${tagLabel[t] || t}</span>`).join(' ');
+    const srcLink = articleUrl ? `<a href="${articleUrl}" target="_blank" style="font-size:11px;color:var(--blue);font-family:var(--mono);text-decoration:none;">${articleSource} ↗</a>` : '';
+
+    document.getElementById('content').innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--accent2);border-radius:12px;overflow:hidden;margin-bottom:1rem;">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);">
+          <div style="font-size:11px;color:var(--accent);font-family:var(--mono);margin-bottom:6px;">★ From Email · Deep Analysis</div>
+          <h3 style="font-size:15px;font-weight:500;color:var(--text);margin:0 0 6px;line-height:1.5;">${articleTitle}</h3>
+          <p style="font-size:13px;color:var(--text2);margin:0 0 10px;">${articleSummary}</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;">${srcLink}<span style="font-size:11px;color:var(--accent);">✓ Analysis complete</span></div>
+        </div>
+        <div style="padding:1.25rem;background:var(--surface2);">
+          <div class="report-grid">
+            <div class="report-block full"><div class="rblock-label">Background</div><div class="rblock-text lang-en">${report.backgroundEn}</div><div class="rblock-text lang-zh" style="display:none;">${report.backgroundZh}</div></div>
+            <div class="report-block"><div class="rblock-label">Key Points</div><ul class="rblock-points lang-en">${ptsEn}</ul><ul class="rblock-points lang-zh" style="display:none;">${ptsZh}</ul></div>
+            <div class="report-block"><div class="rblock-label">Industry Impact</div><div class="rblock-text lang-en">${report.impactEn}</div><div class="rblock-text lang-zh" style="display:none;">${report.impactZh}</div></div>
+            <div class="report-block full"><div class="rblock-label">Smart Cockpit Opportunity</div><div class="rblock-text lang-en">${report.cockpitEn}</div><div class="rblock-text lang-zh" style="display:none;">${report.cockpitZh}</div></div>
+          </div>
+          <div class="tags-row" style="margin-top:12px;">${tags}</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:1rem;">
+        <button class="btn" onclick="fetchNews()" style="font-size:12px;">← Back to today's news</button>
+      </div>`;
+    applyLang();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="error-msg"><p>⚠️ Analysis failed: ${e.message}</p><button class="btn" onclick="fetchNews()" style="margin-top:1rem;">← Back to news</button></div>`;
+  }
+}
+
+// Run after page loads
+setTimeout(handleUrlParams, 500);
 </script>
 </body>
 </html>
