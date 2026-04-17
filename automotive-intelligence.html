@@ -167,10 +167,10 @@
   <div id="history-view"></div>
 </div>
 
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDocs, collection, orderBy, query } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
 
 const firebaseConfig = {
   apiKey: "AIzaSyCDET3YjFAVFwJnPPsGz6pSuVLGDfBiRng",
@@ -181,10 +181,13 @@ const firebaseConfig = {
   appId: "1:39378971944:web:7a8b854484aa2422ccf41d"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
+firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const provider = new firebase.auth.GoogleAuthProvider();
+
+
+
 const STORAGE_KEY = 'automotive_intel_api_key';
 
 let currentUser = null;
@@ -201,7 +204,7 @@ if (savedKey) {
   document.getElementById('btn-skip').style.display = 'block';
 }
 
-onAuthStateChanged(auth, user => {
+firebase.auth().onAuthStateChanged( user => {
   currentUser = user;
   if (user) {
     document.getElementById('api-setup').style.display = 'none';
@@ -230,13 +233,13 @@ window.doSignIn = async () => {
   localStorage.setItem(STORAGE_KEY, key);
   window._apiKey = key;
   document.getElementById('key-status').style.display = 'block';
-  try { await signInWithPopup(auth, provider); }
+  try { await firebase.auth().signInWithPopup(provider); }
   catch(e) { alert('登入失敗：' + e.message); }
 };
 
-window.saveKey = () => {
+window.saveKey = function() {
   const key = document.getElementById('api-key-input').value.trim();
-  if (!key.startsWith('sk-')) { alert('請輸入有效的 API Key（以 sk- 開頭）'); return; }
+  if (!key.startsWith('sk-')) { alert('Please enter a valid API Key (starts with sk-)'); return; }
   localStorage.setItem(STORAGE_KEY, key);
   window._apiKey = key;
   document.getElementById('key-status').style.display = 'block';
@@ -256,7 +259,7 @@ window.startWithoutLogin = () => {
 };
 
 window.doSignOut = async () => {
-  await fbSignOut(auth);
+  await firebase.auth().signOut();
   currentUser = null;
   document.getElementById('main').style.display = 'none';
   document.getElementById('api-setup').style.display = 'block';
@@ -277,10 +280,10 @@ window.switchTab = (tab) => {
 async function saveToHistory(news) {
   if (!currentUser) return;
   try {
-    await setDoc(doc(db,'users',currentUser.uid,'dailyNews',dateStr),{
-      date:dateStr, savedAt:new Date().toISOString(), news
+    await db.collection('users').doc(currentUser.uid).collection('dailyNews').doc(dateStr).set({
+      date: dateStr, savedAt: new Date().toISOString(), news
     });
-  } catch(e) { console.log('儲存失敗',e); }
+  } catch(e) { console.log('Save failed', e); }
 }
 
 async function loadHistory() {
@@ -290,8 +293,8 @@ async function loadHistory() {
   }
   view.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">載入歷史紀錄...</div></div>';
   try {
-    const q = query(collection(db,'users',currentUser.uid,'dailyNews'),orderBy('date','desc'));
-    const snap = await getDocs(q);
+    const q = db.collection('users').doc(currentUser.uid).collection('dailyNews').orderBy('date','desc');
+    const snap = await q.get();
     if (snap.empty) { view.innerHTML = '<div class="history-empty">目前還沒有歷史紀錄<br>每次載入新聞後會自動儲存</div>'; return; }
     let html = '';
     snap.forEach(d => {
