@@ -21,7 +21,7 @@ type: new-car/arch/design. tags: high/mid/watch. JSON only.`;
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 3000,
+      model: 'claude-sonnet-4-6', max_tokens: 5000,
       tools: [{ type: 'web_search_20250305', name: 'web_search' }],
       system: sys,
       messages: [{ role: 'user', content: `Find today (${dateStr}) most important: 1 global + 1 North America automotive news. Focus on new cars, EV, Smart Cockpit, design. JSON only.` }]
