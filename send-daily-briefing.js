@@ -141,10 +141,67 @@ function buildEmailHTML(topStories, summaryStories) {
 
 async function sendEmail(html) {
   const recipients = TO_EMAIL.split(',').map(e => e.trim());
+
+  // Build standalone HTML attachment (self-contained report)
+  const attachmentHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>Automotive Intelligence — ${dateLabel}</title>
+<style>
+  body{margin:0;padding:0;background:#0d0f12;font-family:system-ui,sans-serif;color:#e8eaf0;}
+  .wrap{max-width:780px;margin:0 auto;padding:32px 24px;}
+  h1{font-size:18px;font-weight:600;color:#e8eaf0;margin:0 0 4px;}
+  .sub{font-size:12px;color:#555b72;font-family:monospace;margin:0 0 24px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.07);}
+  .section{font-size:11px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:#555b72;font-family:monospace;margin:24px 0 12px;}
+  .card{background:#151820;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:18px;margin-bottom:14px;}
+  .badges{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .badge{font-size:10px;padding:2px 8px;border-radius:20px;font-family:monospace;}
+  .b-g{background:rgba(31,206,138,0.12);color:#1fce8a;border:1px solid rgba(31,206,138,0.2);}
+  .b-na{background:rgba(74,158,255,0.12);color:#4a9eff;border:1px solid rgba(74,158,255,0.2);}
+  .b-top{background:rgba(31,206,138,0.1);color:#1fce8a;}
+  .b-sum{background:rgba(155,127,232,0.12);color:#9b7fe8;border:1px solid rgba(155,127,232,0.2);}
+  .card h2{font-size:15px;font-weight:500;color:#e8eaf0;margin:0 0 6px;line-height:1.5;}
+  .card p{font-size:13px;color:#8a8fa8;margin:0 0 14px;line-height:1.6;}
+  .block{background:#1c2030;border-radius:8px;padding:12px;margin-bottom:8px;}
+  .lbl{font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#555b72;font-family:monospace;margin-bottom:6px;}
+  .block p{font-size:13px;color:#8a8fa8;margin:0;line-height:1.7;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  ul{margin:0;padding-left:16px;}
+  li{font-size:13px;color:#8a8fa8;margin:4px 0;line-height:1.6;}
+  .tags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .tag-high{font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(255,107,107,0.12);color:#ff6b6b;border:1px solid rgba(255,107,107,0.2);font-family:monospace;}
+  .tag-mid{font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(245,166,35,0.12);color:#f5a623;border:1px solid rgba(245,166,35,0.2);font-family:monospace;}
+  .tag-watch{font-size:11px;padding:2px 8px;border-radius:20px;background:rgba(31,206,138,0.12);color:#1fce8a;border:1px solid rgba(31,206,138,0.2);font-family:monospace;}
+  a{color:#4a9eff;text-decoration:none;}
+  .footer{text-align:center;margin-top:32px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07);font-size:11px;color:#555b72;}
+  @media print{body{background:#fff;color:#000;}.wrap{padding:16px;}.card{border:1px solid #ddd;background:#f9f9f9;}.block{background:#f0f0f0;}.card h2,.block p,.card p,li{color:#333;}.lbl{color:#666;}.sub,.section,.footer{color:#666;}}
+</style>
+</head><body>
+<div class="wrap">
+  <h1>🚗 Automotive Intelligence Daily</h1>
+  <p class="sub">${dateLabel} · Top stories by Claude AI · Summaries by NewsAPI</p>
+  ${html.replace(/<style>[\s\S]*?<\/style>/g, '').replace(/<[^>]*style="[^"]*font-family[^"]*"[^>]*>/g, m => m).replace(/background:#0d0f12/g, '').replace(/max-width:680px/g, 'max-width:100%')}
+  <div class="footer">Automotive Intelligence Daily · ${dateLabel} · Open in browser: <a href="https://appcommons27.github.io/AppCommons/automotive-intelligence.html">App ↗</a></div>
+</div>
+</body></html>`;
+
+  // Convert to base64
+  const attachmentBase64 = Buffer.from(attachmentHtml).toString('base64');
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
-    body: JSON.stringify({ from: 'Automotive Intelligence <onboarding@resend.dev>', to: recipients, subject: `🚗 Automotive Intelligence Daily — ${dateLabel}`, html })
+    body: JSON.stringify({
+      from: 'Automotive Intelligence <onboarding@resend.dev>',
+      to: recipients,
+      subject: `🚗 Automotive Intelligence Daily — ${dateLabel}`,
+      html,
+      attachments: [
+        {
+          filename: `automotive-intelligence-${dateStr}.html`,
+          content: attachmentBase64
+        }
+      ]
+    })
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(JSON.stringify(e)); }
   return await res.json();
