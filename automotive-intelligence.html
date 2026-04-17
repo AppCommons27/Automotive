@@ -315,12 +315,16 @@ window.refresh = fetchNews;
 
 async function fetchNews() {
   document.getElementById('content').innerHTML = `<div class="loading-wrap"><div class="spinner"></div><div class="loading-text">搜尋今日車用產業動態中...</div><div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--mono);">全球 · 北美 · 新車 · 新架構 · 新設計</div></div>`;
-  const sys = `你是資深車用產業分析師，專注Smart Cockpit與車載顯示解決方案。請搜尋今天（${dateStr}）最新汽車新聞，回傳嚴格JSON，不含任何markdown或說明文字。格式：{"news":[{"id":1,"region":"global","type":"new-car","title":"標題繁體中文25字內","summary":"一句話摘要30字內","source":"媒體名稱","readMin":4,"report":{"background":"背景80-120字","keyPoints":["重點一","重點二","重點三"],"impact":"產業影響60-80字","cockpit":"SmartCockpit商機分析50-70字","tags":["high"]}}]}必須回傳6則：3則global，3則na。type只能是new-car/arch/design。tags從high/mid/watch選1-2個。只回傳純JSON。`;
+  const sys = `You are a senior automotive industry analyst focused on Smart Cockpit and in-vehicle display solutions. Search for today's (${dateStr}) latest automotive industry news and return strict JSON only, no markdown or explanation.
+
+Format: {"news":[{"id":1,"region":"global","type":"new-car","titleEn":"Title in English, max 15 words","titleZh":"標題繁體中文，15字以內","summaryEn":"One sentence summary in English, max 25 words","summaryZh":"一句話摘要，繁體中文，25字以內","source":"Media outlet name","sourceUrl":"https://actual-article-url.com","readMin":4,"report":{"backgroundEn":"Background context in English, 60-80 words","backgroundZh":"背景說明，繁體中文，60-80字","keyPointsEn":["Key point 1","Key point 2","Key point 3"],"keyPointsZh":["重點一","重點二","重點三"],"impactEn":"Industry impact in English, 50-70 words","impactZh":"產業影響，繁體中文，50-70字","cockpitEn":"Smart Cockpit opportunity in English, 40-60 words","cockpitZh":"Smart Cockpit商機，繁體中文，40-60字","tags":["high"]}}]}
+
+Must return exactly 6 news items: 3 with region=global, 3 with region=na. type must be one of: new-car, arch, design. tags: choose 1-2 from high/mid/watch. sourceUrl must be the actual article URL. Return pure JSON only.`;
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':window._apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8000,tools:[{type:'web_search_20250305',name:'web_search'}],system:sys,messages:[{role:'user',content:`請搜尋並回傳今天${dateStr}最新的6則全球與北美汽車產業新聞，嚴格依照JSON格式。`}]})
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:8000,tools:[{type:'web_search_20250305',name:'web_search'}],system:sys,messages:[{role:'user',content:`Search and return today's ${dateStr} latest 6 global and North America automotive news, strictly follow JSON format.`}]})
     });
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${res.status}`);}
     const data=await res.json();
@@ -338,7 +342,7 @@ function renderNews(news) {
   const global=news.filter(n=>n.region==='global');
   const na=news.filter(n=>n.region==='na');
   let html=sHTML('全球 · GLOBAL','dot-global',global)+'<div class="section-divider"></div>'+sHTML('北美 · NORTH AMERICA','dot-na',na);
-  html+=`<div class="footer-note">以上新聞由 Claude + Web Search 即時整理 · ${today.toLocaleDateString('zh-TW')}${currentUser?'<br>✓ 已自動儲存至歷史紀錄':''}</div>`;
+  html+=`<div class="footer-note">Daily briefing powered by Claude + Web Search · ${today.toLocaleDateString('zh-TW')}${currentUser?'<br>✓ Auto-saved to history':''}</div>`;
   document.getElementById('content').innerHTML=html;
 }
 
@@ -352,16 +356,18 @@ function cHTML(n){
   return `<div class="news-card" id="card-${n.id}" onclick="toggle(${n.id})">
     <div class="card-main">
       <div class="card-top"><div class="badges"><span class="badge ${RB[n.region]||'b-global'}">${RL[n.region]||n.region}</span><span class="badge ${TB[n.type]||'b-newcar'}">${TL[n.type]||n.type}</span></div><span class="read-time">${n.readMin} min</span></div>
-      <div class="card-title">${n.title}</div>
-      <div class="card-summary">${n.summary}</div>
-      <div class="card-footer"><span class="card-source">${n.source}</span><span class="expand-hint"><span class="expand-arrow">↓</span> 展開分析</span></div>
+      <div class="card-title">${n.titleEn||n.title}</div>
+      <div class="card-title" style="font-size:13px;font-weight:400;color:var(--text2);margin-top:2px;margin-bottom:5px;">${n.titleZh||''}</div>
+      <div class="card-summary">${n.summaryEn||n.summary}</div>
+      <div class="card-summary" style="color:var(--text3);font-size:12px;margin-top:3px;">${n.summaryZh||''}</div>
+      <div class="card-footer">${n.sourceUrl ? `<a href="${n.sourceUrl}" target="_blank" style="font-size:11px;color:var(--blue);font-family:var(--mono);text-decoration:none;" onclick="event.stopPropagation()">${n.source} ↗</a>` : `<span class="card-source">${n.source}</span>`}<span class="expand-hint"><span class="expand-arrow">↓</span> Analysis</span></div>
     </div>
     <div class="report-panel" id="report-${n.id}">
       <div class="report-grid">
-        <div class="report-block full"><div class="rblock-label">背景</div><div class="rblock-text">${n.report.background}</div></div>
-        <div class="report-block"><div class="rblock-label">三大重點</div><ul class="rblock-points">${pts}</ul></div>
-        <div class="report-block"><div class="rblock-label">產業影響</div><div class="rblock-text">${n.report.impact}</div></div>
-        <div class="report-block full"><div class="rblock-label">Smart Cockpit 商機分析</div><div class="rblock-text">${n.report.cockpit}</div></div>
+        <div class="report-block full"><div class="rblock-label">Background</div><div class="rblock-text">${n.report.background}</div></div>
+        <div class="report-block"><div class="rblock-label">Key Points</div><ul class="rblock-points">${pts}</ul></div>
+        <div class="report-block"><div class="rblock-label">Industry Impact</div><div class="rblock-text">${n.report.impact}</div></div>
+        <div class="report-block full"><div class="rblock-label">Smart Cockpit Opportunity</div><div class="rblock-text">${n.report.cockpit}</div></div>
       </div>
       <div class="tags-row">${tags}</div>
     </div>
