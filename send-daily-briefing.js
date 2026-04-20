@@ -36,7 +36,14 @@ type: new-car/arch/design. tags: high/mid/watch. JSON only.`;
 
 async function fetchSummaryStories(excludeUrls = []) {
   console.log('Stage 2: Fetching summaries from NewsAPI...');
-  const queries = ['automotive electric vehicle new car 2026', 'North America auto industry Ford GM Tesla Stellantis'];
+  const queries = [
+    'automotive new car launch EV platform 2026',
+    'North America auto industry Ford GM Stellantis Tesla strategy',
+    'automotive software defined vehicle SDV cockpit infotainment',
+    'HMI display technology automotive interior 2026',
+    'China EV automaker smart cockpit technology trend',
+    'automotive Tier1 supplier cockpit ADAS technology partnership'
+  ];
   const allArticles = [];
   for (const q of queries) {
     const res = await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(q)}&language=en&sortBy=publishedAt&pageSize=6&apiKey=${NEWS_API_KEY}`);
