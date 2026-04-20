@@ -37,12 +37,12 @@ type: new-car/arch/design. tags: high/mid/watch. JSON only.`;
 async function fetchSummaryStories(excludeUrls = []) {
   console.log('Stage 2: Fetching summaries from NewsAPI...');
   const queries = [
-    'automotive new car launch EV platform 2026',
-    'North America auto industry Ford GM Stellantis Tesla strategy',
-    'automotive software defined vehicle SDV cockpit infotainment',
-    'HMI display technology automotive interior 2026',
-    'China EV automaker smart cockpit technology trend',
-    'automotive Tier1 supplier cockpit ADAS technology partnership'
+    'North America automotive new model launch strategy 2026',
+    'automotive software defined vehicle SDV cockpit North America',
+    'HMI infotainment display automotive US market supplier',
+    'automotive EV platform architecture new car launch 2026',
+    'Europe automotive OEM EV SDV cockpit strategy 2026',
+    'China EV smart cockpit HMI technology export global'
   ];
   const allArticles = [];
   for (const q of queries) {
